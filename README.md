@@ -28,7 +28,7 @@ A comprehensive Streamlit dashboard for stock market analysis, featuring real-ti
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/lab1702/streamlit_test
 cd streamlit_test
 ```
 
@@ -51,7 +51,7 @@ streamlit run "🏠_Home.py"
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/lab1702/streamlit_test
 cd streamlit_test
 ```
 
