@@ -34,7 +34,7 @@ cd streamlit_test
 
 2. Run the installation script:
 ```bash
-./install.sh
+bash install.sh
 ```
 
 3. Activate the virtual environment:
