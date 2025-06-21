@@ -64,7 +64,7 @@ API_CONFIG: Dict[str, Any] = {
 
 # Cache Configuration
 CACHE_CONFIG: Dict[str, Any] = {
-    "data_ttl_seconds": int(os.getenv("CACHE_DATA_TTL_SECONDS", "300")),  # 5 minutes for stock data
+    "data_ttl_seconds": int(os.getenv("CACHE_DATA_TTL_SECONDS", "3600")),  # 1 hour for stock data
     "model_ttl_seconds": int(os.getenv("CACHE_MODEL_TTL_SECONDS", "3600")),  # 1 hour for Prophet models
     "forecast_ttl_seconds": int(os.getenv("CACHE_FORECAST_TTL_SECONDS", "3600")),  # 1 hour for forecasts
     "max_data_entries": int(os.getenv("CACHE_MAX_DATA_ENTRIES", "100")),  # Max cached stock data

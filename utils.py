@@ -97,6 +97,36 @@ def format_volume_dollars(volume: Union[float, int], price: Union[float, int]) -
     max_entries=cache_config['max_data_entries'], 
     show_spinner=cache_config['show_cache_spinner']
 )
+def get_company_info_cached(symbol: str) -> Optional[dict]:
+    """
+    Get cached company information from Yahoo Finance.
+    
+    Args:
+        symbol: Stock ticker symbol
+        
+    Returns:
+        Dictionary with company info or None if error
+    """
+    try:
+        logger.info(f"Fetching company info for {symbol.upper()} (cache miss)")
+        ticker = yf.Ticker(symbol.upper())
+        info = ticker.info
+        
+        if not info:
+            logger.warning(f"No company info found for symbol {symbol.upper()}")
+            return None
+            
+        logger.info(f"Successfully fetched company info for {symbol.upper()}")
+        return info
+    except Exception as e:
+        logger.error(f"Error fetching company info for {symbol}: {str(e)}")
+        return None
+
+@st.cache_data(
+    ttl=cache_config['data_ttl_seconds'], 
+    max_entries=cache_config['max_data_entries'], 
+    show_spinner=cache_config['show_cache_spinner']
+)
 def get_stock_data_cached(symbol: str, start_date: datetime, end_date: datetime) -> Optional[pd.DataFrame]:
     """
     Cached version of stock data fetching from Yahoo Finance.
