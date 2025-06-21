@@ -20,6 +20,8 @@ A comprehensive Streamlit dashboard for stock market analysis, featuring real-ti
 - **Configurable Timeframes**: 7-90 day forecast periods
 - **Trend Analysis**: Decomposition charts showing trend and seasonality components
 - **Confidence Intervals**: Upper and lower bounds for predictions
+- **Cross Validation**: Model performance assessment with MAE, MAPE, and RMSE metrics
+- **Residual Analysis**: Scatter plots showing prediction accuracy over time
 - **Data Export**: Downloadable forecast tables
 
 ## Installation
@@ -100,6 +102,8 @@ The Prophet model analyzes historical price patterns to predict future movements
 - **Trend Component**: Long-term price direction
 - **Seasonality**: Yearly patterns in stock behavior
 - **Uncertainty**: Confidence intervals for predictions
+- **Cross Validation**: Evaluates model performance using time series splits with configurable initial period (365 days), validation period (90 days), and forecast horizon (30 days)
+- **Performance Metrics**: MAE (Mean Absolute Error), MAPE (Mean Absolute Percentage Error), and RMSE (Root Mean Square Error) for accuracy assessment
 
 ## File Structure
 
@@ -120,6 +124,7 @@ streamlit_test/
 - **Historical Data**: 5 years (1825 days)
 - **Forecast Period**: 30 days
 - **Minimum Data**: 100 days required for forecasting
+- **Cross Validation**: 730 days minimum for reliable CV analysis
 - **Chart Height**: 700px for dashboard, 600px for forecast
 
 ### Customization
