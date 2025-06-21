@@ -7,31 +7,80 @@ from prophet.diagnostics import cross_validation, performance_metrics
 import matplotlib.pyplot as plt
 import warnings
 from typing import Optional, Tuple
+from utils import MIN_DATA_POINTS, MIN_CV_DATA_POINTS, DAYS_5_YEARS, DEFAULT_FORECAST_DAYS, logger, get_stock_data_cached, generate_data_hash
+from config import get_config
 
 warnings.filterwarnings('ignore')
 
-# Constants
-MIN_DATA_POINTS = 100
-MIN_CV_DATA_POINTS = 730
-DEFAULT_LOOKBACK_DAYS = 1825
-DEFAULT_FORECAST_DAYS = 30
+# Load cache configuration
+cache_config = get_config('cache')
 
 st.set_page_config(page_title="Stock Forecast", layout="wide")
 
 st.title("🔮 Stock Price Forecast")
 
-def get_stock_data(symbol: str, start_date: datetime, end_date: datetime) -> Optional[pd.DataFrame]:
-    """Fetch stock data from Yahoo Finance."""
-    try:
-        ticker = yf.Ticker(symbol.upper())
-        data = ticker.history(start=start_date, end=end_date)
-        return data if not data.empty else None
-    except Exception as e:
-        st.error(f"Error fetching data for {symbol}: {str(e)}")
-        return None
+@st.cache_resource(
+    max_entries=cache_config['max_model_entries'], 
+    show_spinner=cache_config['show_cache_spinner']
+)
+def train_prophet_model(symbol: str, data_hash: str, prophet_data: pd.DataFrame) -> Prophet:
+    """
+    Train and cache Prophet model for stock forecasting.
+    
+    Args:
+        symbol: Stock ticker symbol
+        data_hash: Hash of the training data for cache key
+        prophet_data: DataFrame formatted for Prophet
+        
+    Returns:
+        Trained Prophet model
+    """
+    logger.info(f"Training Prophet model for {symbol.upper()} (cache miss)")
+    
+    model = Prophet(
+        weekly_seasonality=False,
+        daily_seasonality=False,
+        yearly_seasonality=True
+    )
+    model.fit(prophet_data)
+    
+    logger.info(f"Prophet model training completed for {symbol.upper()}")
+    return model
+
+@st.cache_data(
+    ttl=cache_config['forecast_ttl_seconds'], 
+    max_entries=cache_config['max_forecast_entries'], 
+    show_spinner=cache_config['show_cache_spinner']
+)
+def generate_forecast_cached(symbol: str, data_hash: str, forecast_days: int) -> pd.DataFrame:
+    """
+    Generate cached forecast predictions.
+    
+    Args:
+        symbol: Stock ticker symbol
+        data_hash: Hash of the training data
+        forecast_days: Number of days to forecast
+        
+    Returns:
+        DataFrame with forecast predictions
+    """
+    logger.info(f"Generating forecast for {symbol.upper()}, {forecast_days} days (cache miss)")
+    
+    # Note: This function would need the model and data passed differently
+    # in a real implementation, but for now we'll use it as a placeholder
+    # The actual caching will be handled in the main forecast logic
+    return pd.DataFrame()  # Placeholder
 
 def prepare_prophet_data(data: pd.DataFrame) -> pd.DataFrame:
-    """Prepare data for Prophet model."""
+    """
+    Prepare data for Prophet model by converting to required format.
+    
+    Args:
+        data: Raw stock data DataFrame
+        
+    Returns:
+        DataFrame formatted for Prophet (ds, y columns)
+    """
     df = data.reset_index()
     return pd.DataFrame({
         'ds': df['Date'].dt.tz_localize(None),
@@ -39,11 +88,22 @@ def prepare_prophet_data(data: pd.DataFrame) -> pd.DataFrame:
     })
 
 def perform_cross_validation(model: Prophet, df: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, pd.DataFrame]]:
-    """Perform cross validation on Prophet model."""
+    """
+    Perform cross validation on Prophet model to assess performance.
+    
+    Args:
+        model: Fitted Prophet model
+        df: Prophet-formatted DataFrame
+        
+    Returns:
+        Tuple of (cross_validation_results, performance_metrics) or None if insufficient data
+    """
     if len(df) < MIN_CV_DATA_POINTS:
+        logger.info(f"Insufficient data for cross validation: {len(df)} < {MIN_CV_DATA_POINTS}")
         return None
     
     try:
+        logger.info("Starting cross validation")
         initial_days = min(365, len(df) // 2)
         cv_results = cross_validation(
             model,
@@ -52,14 +112,16 @@ def perform_cross_validation(model: Prophet, df: pd.DataFrame) -> Optional[Tuple
             horizon='30 days'
         )
         performance = performance_metrics(cv_results)
+        logger.info("Cross validation completed successfully")
         return cv_results, performance
     except Exception as e:
+        logger.error(f"Cross validation failed: {str(e)}")
         st.warning(f"Cross validation failed: {str(e)}")
         return None
 
 # Initialize session state
 stock_symbol = st.session_state.get('stock_symbol', '')
-start_date = st.session_state.get('start_date', datetime.now() - timedelta(days=DEFAULT_LOOKBACK_DAYS))
+start_date = st.session_state.get('start_date', datetime.now() - timedelta(days=DAYS_5_YEARS))
 end_date = st.session_state.get('end_date', datetime.now())
 
 with st.sidebar:
@@ -68,7 +130,8 @@ with st.sidebar:
 
 if stock_symbol:
     with st.spinner(f"Fetching data and generating forecast for {stock_symbol.upper()}..."):
-        data = get_stock_data(stock_symbol, start_date, end_date)
+        # Use cached data fetching
+        data = get_stock_data_cached(stock_symbol, start_date, end_date)
         
         if data is None:
             st.error(f"No data found for symbol '{stock_symbol.upper()}'. Please check the ticker symbol.")
@@ -77,13 +140,10 @@ if stock_symbol:
         else:
             try:
                 df_prophet = prepare_prophet_data(data)
+                data_hash = generate_data_hash(data)
                 
-                model = Prophet(
-                    weekly_seasonality=False,
-                    daily_seasonality=False,
-                    yearly_seasonality=True
-                )
-                model.fit(df_prophet)
+                # Use cached model training
+                model = train_prophet_model(stock_symbol, data_hash, df_prophet)
                 
                 future = model.make_future_dataframe(periods=forecast_days)
                 forecast = model.predict(future)
